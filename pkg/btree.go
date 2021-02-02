@@ -267,12 +267,10 @@ func (pff *PFF) GetBTreeNodePageType(formatType string, btreeNode BTreeNode) (in
 //
 // References "5.1. The 32-bit index b-tree node", "5.2. The 64-bit index b-tree node"
 func (pff *PFF) GetBTreeBranchNodeEntryOffset(formatType string, nodeEntry []byte) (int, error) {
-	if formatType == FormatType64 {
+	if formatType == FormatType64 || formatType == FormatType64With4k{
 		return int(binary.LittleEndian.Uint64(nodeEntry[16:24])), nil
-	} else if formatType == FormatType64With4k {
-		return -1, nil
 	} else if formatType == FormatType32 {
-		return -1, nil
+		return int(binary.LittleEndian.Uint32(nodeEntry[8:12])), nil
 	} else {
 		return -1, errors.New("unsupported format type")
 	}
