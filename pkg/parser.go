@@ -1,3 +1,5 @@
+// This file is part of go-pff (https://github.com/mooijtech/go-pff)
+// Copyright (C) 2021 Marten Mooij (https://www.mooijtech.com/)
 package pff
 
 import log "github.com/sirupsen/logrus"
@@ -65,4 +67,24 @@ func (parser *Parser) Parse(inputFile string) {
 	}
 
 	log.Debugf("Found node b-tree entry: %d", nodeBTreeEntry.Identifier)
+
+	localDescriptors, err := nodeBTreeEntry.GetLocalDescriptorsOffset(formatType)
+
+	if err != nil {
+		log.Errorf("Failed to get local descriptors: %s", err)
+	}
+
+	blockBTree, err := pst.GetBlockBTree(formatType)
+
+	if err != nil {
+		log.Errorf("Failed to get block b-tree: %s", err)
+	}
+
+	blockBTreeEntry, err := pst.FindBTreeNode(formatType, blockBTree, localDescriptors)
+
+	if err != nil {
+		log.Errorf("Failed to find block b-tree entry: %s", err)
+	}
+
+	log.Debugf("Found node b-tree entry local descriptors: %d", blockBTreeEntry.Identifier)
 }

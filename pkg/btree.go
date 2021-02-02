@@ -424,3 +424,11 @@ func (pff *PFF) FindBTreeNode(formatType string, btreeNode BTreeNode, identifier
 
 	return BTreeNodeEntry{}, nil
 }
+
+func (pff *PFF) GetNodeBTreeNode() {
+
+}
+
+func (pff *PFF) GetBlockBTreeNode() {
+
+}
