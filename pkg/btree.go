@@ -5,6 +5,7 @@ package pff
 import (
 	"encoding/binary"
 	"errors"
+	log "github.com/sirupsen/logrus"
 )
 
 // BTreeNode represents a branch- or leaf node in the b-tree.
@@ -168,7 +169,7 @@ func (pff *PFF) GetBTreeNodeMaxEntryCount(formatType string, btreeNode BTreeNode
 // References "5. The index b-tree":
 func (pff *PFF) GetBTreeNodeEntrySize(formatType string, btreeNode BTreeNode) (int, error) {
 	if formatType == FormatType64 {
-		entrySize, err := pff.Read(1, btreeNode.StartOffset+490)
+		entrySize, err := pff.Read(1, btreeNode.StartOffset + 490)
 
 		if err != nil {
 			return -1, err
@@ -176,7 +177,7 @@ func (pff *PFF) GetBTreeNodeEntrySize(formatType string, btreeNode BTreeNode) (i
 
 		return int(binary.LittleEndian.Uint16([]byte{entrySize[0], 0})), nil
 	} else if formatType == FormatType64With4k {
-		entrySize, err := pff.Read(1, btreeNode.StartOffset+4060)
+		entrySize, err := pff.Read(1, btreeNode.StartOffset + 4060)
 
 		if err != nil {
 			return -1, err
@@ -184,13 +185,13 @@ func (pff *PFF) GetBTreeNodeEntrySize(formatType string, btreeNode BTreeNode) (i
 
 		return int(binary.LittleEndian.Uint16([]byte{entrySize[0], 0})), nil
 	} else if formatType == FormatType32 {
-		entrySize, err := pff.Read(2, btreeNode.StartOffset+498)
+		entrySize, err := pff.Read(1, btreeNode.StartOffset + 498)
 
 		if err != nil {
 			return -1, err
 		}
 
-		return int(binary.LittleEndian.Uint16(entrySize)), nil
+		return int(binary.LittleEndian.Uint16([]byte{entrySize[0], 0})), nil
 	} else {
 		return -1, errors.New("unsupported format type")
 	}
@@ -382,6 +383,8 @@ func (pff *PFF) FindBTreeNode(formatType string, btreeNode BTreeNode, identifier
 		for i := 0; i < len(btreeNodeEntries); i++ {
 			btreeNodeEntry := btreeNodeEntries[i]
 
+			log.Debugf("Got branch node entry: %d", btreeNodeEntry.Identifier)
+
 			if btreeNodeEntry.Identifier == identifier {
 				return btreeNodeEntry, nil
 			}
@@ -401,6 +404,8 @@ func (pff *PFF) FindBTreeNode(formatType string, btreeNode BTreeNode, identifier
 				return BTreeNodeEntry{}, nil
 			}
 
+			log.Debugf("Got branch node entry: %d", btreeNodeEntry.Identifier)
+
 			if btreeNodeEntry.Identifier == identifier {
 				return btreeNodeEntry, nil
 			}
@@ -411,6 +416,8 @@ func (pff *PFF) FindBTreeNode(formatType string, btreeNode BTreeNode, identifier
 
 		for i := 0; i < len(btreeNodeEntries); i++ {
 			btreeNodeEntry := btreeNodeEntries[i]
+
+			log.Debugf("Got leaf node entry: %d", btreeNodeEntry.Identifier)
 
 			if btreeNodeEntry.Identifier == identifier {
 				return btreeNodeEntry, nil
