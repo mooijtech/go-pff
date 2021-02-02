@@ -24,6 +24,11 @@
 
 This library is a work in progress, feel free to contribute.
 
+## Documentation
+
+- [Personal Folder File (PFF) file format specification](https://github.com/mooijtech/go-pff/blob/main/docs/PFF.pdf)
+- [Outlook Personal Folders (.pst) File Format](https://github.com/mooijtech/go-pff/blob/main/docs/MS-PST.pdf)
+
 ## License
 
 [MIT](https://github.com/mooijtech/go-pff/blob/master/LICENSE.txt)
