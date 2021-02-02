@@ -5,7 +5,6 @@ package pff
 import (
 	"encoding/binary"
 	"errors"
-	log "github.com/sirupsen/logrus"
 )
 
 // BTreeNode represents a branch- or leaf node in the b-tree.
@@ -31,6 +30,28 @@ func NewBTreeNodeEntry(identifier int, data []byte) BTreeNodeEntry {
 	return BTreeNodeEntry {
 		Identifier:      identifier,
 		Data:            data,
+	}
+}
+
+// GetLocalDescriptorsOffset returns the offset of the b-tree leaf node entry local descriptors.
+func (btreeNodeEntry *BTreeNodeEntry) GetLocalDescriptorsOffset(formatType string) (int, error) {
+	if formatType == FormatType64 || formatType == FormatType64With4k {
+		return int(binary.LittleEndian.Uint64(btreeNodeEntry.Data[16:24])), nil
+	} else if formatType == FormatType32 {
+		return int(binary.LittleEndian.Uint32(btreeNodeEntry.Data[8:12])), nil
+	} else {
+		return -1, errors.New("unsupported format type")
+	}
+}
+
+// GetDataOffset returns the b-tree leaf node entry data offset.
+func (btreeNodeEntry *BTreeNodeEntry) GetDataOffset(formatType string) (int, error) {
+	if formatType == FormatType64 || formatType == FormatType64With4k {
+		return int(binary.LittleEndian.Uint64(btreeNodeEntry.Data[8:16])), nil
+	} else if formatType == FormatType32 {
+		return int(binary.LittleEndian.Uint32(btreeNodeEntry.Data[4:8])), nil
+	} else {
+		return -1, errors.New("unsupported format type")
 	}
 }
 
@@ -276,22 +297,6 @@ func (pff *PFF) GetBTreeBranchNodeEntryOffset(formatType string, nodeEntry []byt
 	}
 }
 
-func (btreeNodeEntry *BTreeNodeEntry) GetLocalDescriptorsOffset(formatType string) (int, error) {
-	if formatType == FormatType64 {
-		return int(binary.LittleEndian.Uint64(btreeNodeEntry.Data[16:24])), nil
-	} else {
-		return -1, errors.New("unsupported format type")
-	}
-}
-
-func (btreeNodeEntry *BTreeNodeEntry) GetDataOffset(formatType string) (int, error) {
-	if formatType == FormatType64 {
-		return int(binary.LittleEndian.Uint64(btreeNodeEntry.Data[8:16])), nil
-	} else {
-		return -1, errors.New("unsupported format type")
-	}
-}
-
 // GetBTreeNodeEntries returns an array of b-tree nodes for a given b-tree node.
 //
 // References "5. The index b-tree".
@@ -381,8 +386,6 @@ func (pff *PFF) FindBTreeNode(formatType string, btreeNode BTreeNode, identifier
 		for i := 0; i < len(btreeNodeEntries); i++ {
 			btreeNodeEntry := btreeNodeEntries[i]
 
-			log.Debugf("Got branch node entry: %d", btreeNodeEntry.Identifier)
-
 			if btreeNodeEntry.Identifier == identifier {
 				return btreeNodeEntry, nil
 			}
@@ -402,8 +405,6 @@ func (pff *PFF) FindBTreeNode(formatType string, btreeNode BTreeNode, identifier
 				return BTreeNodeEntry{}, nil
 			}
 
-			log.Debugf("Got branch node entry: %d", btreeNodeEntry.Identifier)
-
 			if btreeNodeEntry.Identifier == identifier {
 				return btreeNodeEntry, nil
 			}
@@ -414,8 +415,6 @@ func (pff *PFF) FindBTreeNode(formatType string, btreeNode BTreeNode, identifier
 
 		for i := 0; i < len(btreeNodeEntries); i++ {
 			btreeNodeEntry := btreeNodeEntries[i]
-
-			log.Debugf("Got leaf node entry: %d", btreeNodeEntry.Identifier)
 
 			if btreeNodeEntry.Identifier == identifier {
 				return btreeNodeEntry, nil
