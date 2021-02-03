@@ -2,7 +2,9 @@
 // Copyright (C) 2021 Marten Mooij (https://www.mooijtech.com/)
 package pff
 
-import log "github.com/sirupsen/logrus"
+import (
+	log "github.com/sirupsen/logrus"
+)
 
 // Parser represents a parser for PST files.
 type Parser struct {}
@@ -60,31 +62,11 @@ func (parser *Parser) Parse(inputFile string) {
 
 	log.Infof("Node b-tree offset: %d", nodeBTree.StartOffset)
 
-	nodeBTreeEntry, err := pst.FindBTreeNode(formatType, nodeBTree, 97)
+	nodeBTreeEntry, err := pst.FindBTreeNode(formatType, nodeBTree, 290)
 
 	if err != nil {
 		log.Errorf("Failed to find b-tree node entry: %s", err)
 	}
 
 	log.Debugf("Found node b-tree entry: %d", nodeBTreeEntry.Identifier)
-
-	localDescriptors, err := nodeBTreeEntry.GetLocalDescriptorsOffset(formatType)
-
-	if err != nil {
-		log.Errorf("Failed to get local descriptors: %s", err)
-	}
-
-	blockBTree, err := pst.GetBlockBTree(formatType)
-
-	if err != nil {
-		log.Errorf("Failed to get block b-tree: %s", err)
-	}
-
-	blockBTreeEntry, err := pst.FindBTreeNode(formatType, blockBTree, localDescriptors)
-
-	if err != nil {
-		log.Errorf("Failed to find block b-tree entry: %s", err)
-	}
-
-	log.Debugf("Found node b-tree entry local descriptors: %d", blockBTreeEntry.Identifier)
 }

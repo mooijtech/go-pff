@@ -5,6 +5,7 @@ package pff
 import (
 	"encoding/binary"
 	"errors"
+	log "github.com/sirupsen/logrus"
 )
 
 // BTreeNode represents a branch- or leaf node in the b-tree.
@@ -34,6 +35,8 @@ func NewBTreeNodeEntry(identifier int, data []byte) BTreeNodeEntry {
 }
 
 // GetLocalDescriptorsOffset returns the offset of the b-tree leaf node entry local descriptors.
+//
+// References "5.2.3. The 64-bit descriptor index b-tree leaf node entry", "5.1.3. The 32-bit descriptor index b-tree leaf node entry"
 func (btreeNodeEntry *BTreeNodeEntry) GetLocalDescriptorsOffset(formatType string) (int, error) {
 	if formatType == FormatType64 || formatType == FormatType64With4k {
 		return int(binary.LittleEndian.Uint64(btreeNodeEntry.Data[16:24])), nil
@@ -45,6 +48,8 @@ func (btreeNodeEntry *BTreeNodeEntry) GetLocalDescriptorsOffset(formatType strin
 }
 
 // GetDataOffset returns the b-tree leaf node entry data offset.
+//
+// References "5.2.3. The 64-bit descriptor index b-tree leaf node entry", "5.1.3. The 32-bit descriptor index b-tree leaf node entry"
 func (btreeNodeEntry *BTreeNodeEntry) GetDataOffset(formatType string) (int, error) {
 	if formatType == FormatType64 || formatType == FormatType64With4k {
 		return int(binary.LittleEndian.Uint64(btreeNodeEntry.Data[8:16])), nil
@@ -55,9 +60,135 @@ func (btreeNodeEntry *BTreeNodeEntry) GetDataOffset(formatType string) (int, err
 	}
 }
 
+// GetEntryOffset returns the offset for the block b-tree entry.
+//
+// References "5.2.2. The 64-bit (file) offset index entry", "5.1.2. The 32-bit (file) offset index entry"
+func (btreeNodeEntry *BTreeNodeEntry) GetEntryOffset(formatType string) (int, error) {
+	if formatType == FormatType64 || formatType == FormatType64With4k {
+		return int(binary.LittleEndian.Uint64(btreeNodeEntry.Data[8:16])), nil
+	} else if formatType == FormatType32 {
+		return int(binary.LittleEndian.Uint32(btreeNodeEntry.Data[4:8])), nil
+	} else {
+		return -1, errors.New("unsupported format type")
+	}
+}
+
+// LocalDescriptor represents a local descriptor.
+type LocalDescriptor struct {
+	StartOffset int
+}
+
+// NewLocalDescriptor is a constructor for creating local descriptors.
+func NewLocalDescriptor(startOffset int) LocalDescriptor {
+	return LocalDescriptor {
+		StartOffset: startOffset,
+	}
+}
+
+// GetLocalDescriptorSignature returns the signature of the local descriptor.
+//
+// References "10. The local descriptors".
+func (pff *PFF) GetLocalDescriptorSignature(localDescriptor LocalDescriptor) (int, error) {
+	signature, err := pff.Read(1, localDescriptor.StartOffset)
+
+	if err != nil {
+		return -1, err
+	}
+
+	return int(binary.LittleEndian.Uint16([]byte{signature[0], 0})), nil
+}
+
+// GetLocalDescriptorEntryCount returns the local descriptor entry count.
+//
+// References "10. The local descriptors".
+func (pff *PFF) GetLocalDescriptorEntryCount(localDescriptor LocalDescriptor) (int, error) {
+	entryCount, err := pff.Read(2, localDescriptor.StartOffset + 2)
+
+	if err != nil {
+		return -1, err
+	}
+	
+	return int(binary.LittleEndian.Uint16(entryCount)), nil
+}
+
+// GetLocalDescriptorNodeLevel returns the local descriptor node level.
+//
+// References "10. The local descriptors".
+func (pff *PFF) GetLocalDescriptorNodeLevel(localDescriptor LocalDescriptor) (int, error) {
+	nodeLevel, err := pff.Read(1, localDescriptor.StartOffset + 1)
+
+	if err != nil {
+		return -1, err
+	}
+
+	return int(binary.LittleEndian.Uint16([]byte{nodeLevel[0], 0})), nil
+}
+
+type LocalDescriptorEntry struct {
+	Identifier int
+	Offset int
+}
+
+func (pff *PFF) GetLocalDescriptorEntries(formatType string, localDescriptor LocalDescriptor) ([]byte, error) {
+	localDescriptorEntryCount, err := pff.GetLocalDescriptorEntryCount(localDescriptor)
+
+	if err != nil {
+		return nil, err
+	}
+
+	localDescriptorNodeLevel, err := pff.GetLocalDescriptorNodeLevel(localDescriptor)
+
+	if err != nil {
+		return nil, err
+	}
+
+	var localDescriptorEntries []byte
+
+	if localDescriptorNodeLevel > 0 {
+		// Branch nodes
+
+		if formatType == FormatType64 || formatType == FormatType64With4k {
+			localDescriptorEntries, err = pff.Read(localDescriptorEntryCount * 16, localDescriptor.StartOffset + 8)
+		} else if formatType == FormatType32 {
+			localDescriptorEntries, err = pff.Read(localDescriptorEntryCount * 8, localDescriptor.StartOffset + 4)
+		} else {
+			return nil, errors.New("unsupported format type")
+		}
+	} else {
+		// Leaf nodes
+
+		if formatType == FormatType64 || formatType == FormatType64With4k {
+			localDescriptorEntries, err = pff.Read(localDescriptorEntryCount * 16, localDescriptor.StartOffset + 8)
+		} else if formatType == FormatType32 {
+			localDescriptorEntries, err = pff.Read(localDescriptorEntryCount * 8, localDescriptor.StartOffset + 4)
+		} else {
+			return nil, errors.New("unsupported format type")
+		}
+	}
+
+	if err != nil {
+		return nil, err
+	}
+
+	for i := 0; i < localDescriptorEntryCount; i++ {
+		log.Debugf("Identifier: %d", binary.LittleEndian.Uint64(localDescriptorEntries[:8]))
+		log.Debugf("Offset: %d", binary.LittleEndian.Uint64(localDescriptorEntries[8:16]))
+	}
+
+	return localDescriptorEntries, nil
+}
+
+// Constants for identifying the local descriptor block types.
+//
+// References "8.4. Block types".
+const (
+	BlockTypeSL = 0
+	BlockTypeSI = 1
+)
+
 // GetNodeBTree returns the Node B-Tree (NBT).
 //
-// References "2.3. The 32-bit header data" and "2.4. The 64-bit header data", "5. The index b-tree":
+// References "2.3. The 32-bit header data", "2.4. The 64-bit header data" and "5. The index b-tree":
 // An index b-tree consists of:
 // - branch nodes that point to branch or leaf nodes
 // - leaf nodes that contain the index data
