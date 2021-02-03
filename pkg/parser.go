@@ -54,19 +54,5 @@ func (parser *Parser) Parse(inputFile string) {
 
 	log.Infof("Detected encryption type: %s...", encryptionType)
 
-	nodeBTree, err := pst.GetNodeBTree(formatType)
-
-	if err != nil {
-		log.Errorf("Failed to get node b-tree: %s", err)
-	}
-
-	log.Infof("Node b-tree offset: %d", nodeBTree.StartOffset)
-
-	nodeBTreeEntry, err := pst.FindBTreeNode(formatType, nodeBTree, 290)
-
-	if err != nil {
-		log.Errorf("Failed to find b-tree node entry: %s", err)
-	}
-
-	log.Debugf("Found node b-tree entry: %d", nodeBTreeEntry.Identifier)
+	pst.ProcessNameToIDMap(formatType)
 }
