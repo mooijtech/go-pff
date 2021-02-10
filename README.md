@@ -22,7 +22,11 @@
 
 ---
 
+This library is based on [java-libpst](https://github.com/rjohnsondev/java-libpst) and [libpff](https://github.com/libyal/libpff).
+
 This library is a work in progress, feel free to contribute.
+
+### Problem: [I can't find where the table starts.](https://github.com/mooijtech/go-pff/blob/main/pkg/folder.go#L75)
 
 ## Documentation
 
