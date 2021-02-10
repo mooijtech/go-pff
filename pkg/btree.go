@@ -61,7 +61,7 @@ func (btreeNodeEntry *BTreeNodeEntry) GetDataIdentifier(formatType string) (int,
 	}
 }
 
-// GetFileOffset returns the offset for the block b-tree entry.
+// GetFileOffset returns the file offset for the block b-tree entry.
 //
 // References "5.2.2. The 64-bit (file) offset index entry", "5.1.2. The 32-bit (file) offset index entry"
 func (btreeNodeEntry *BTreeNodeEntry) GetFileOffset(formatType string) (int, error) {
@@ -453,19 +453,47 @@ func (pff *PFF) ProcessNameToIDMap(formatType string) error {
 
 	log.Infof("Node b-tree offset: %d", nodeBTree.StartOffset)
 
-	nodeBTreeEntry, err := pff.FindBTreeNode(formatType, nodeBTree, 97)
+	// Name To ID Map
+	nameToIDMapNode, err := pff.FindBTreeNode(formatType, nodeBTree, 97)
 
 	if err != nil {
 		log.Errorf("Failed to find b-tree node entry: %s", err)
 	}
 
-	log.Debugf("Found node b-tree entry: %d", nodeBTreeEntry.Identifier)
+	log.Debugf("Found node b-tree entry: %d", nameToIDMapNode.Identifier)
 
-	err = pff.GetLocalDescriptors(formatType, nodeBTreeEntry)
+	err = pff.GetLocalDescriptors(formatType, nameToIDMapNode)
 
 	if err != nil {
 		return err
 	}
+
+	blockBTree, err := pff.GetBlockBTree(formatType)
+
+	if err != nil {
+		return err
+	}
+
+	nameToIDMapNodeDataIdentifier, err := nameToIDMapNode.GetDataIdentifier(formatType)
+
+	if err != nil {
+		return err
+	}
+
+	nameToIDMapNodeDataNode, err := pff.FindBTreeNode(formatType, blockBTree, nameToIDMapNodeDataIdentifier)
+
+	if err != nil {
+		return err
+	}
+
+	n, err := nameToIDMapNodeDataNode.GetFileOffset(formatType)
+
+	log.Debugf("Found data node: %d", nameToIDMapNodeDataNode.Identifier)
+	log.Debugf("Data: %d", n)
+
+	x, err := pff.Read(2, n)
+
+	log.Debugf("It's: %d", x)
 
 	return nil
 }

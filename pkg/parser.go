@@ -54,5 +54,11 @@ func (parser *Parser) Parse(inputFile string) {
 
 	log.Infof("Detected encryption type: %s...", encryptionType)
 
-	pst.ProcessNameToIDMap(formatType)
+	rootFolder, err := pst.GetRootFolder(formatType)
+
+	if err != nil {
+		log.Errorf("Failed to get root folder: %s", err)
+	}
+
+	err = pst.GetSubFolders(formatType, rootFolder)
 }
