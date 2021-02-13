@@ -74,6 +74,19 @@ func (btreeNodeEntry *BTreeNodeEntry) GetFileOffset(formatType string) (int, err
 	}
 }
 
+// GetSize returns the size of the data in the block b-tree entry.
+//
+// References "5.1.2. The 32-bit (file) offset index entry" and "5.2.2. The 64-bit (file) offset index entry"
+func (btreeNodeEntry *BTreeNodeEntry) GetSize(formatType string) (int, error) {
+	if formatType == FormatType64 || formatType == FormatType64With4k {
+		return int(binary.LittleEndian.Uint16(btreeNodeEntry.Data[16:18])), nil
+	} else if formatType == FormatType32 {
+		return int(binary.LittleEndian.Uint16(btreeNodeEntry.Data[8:10])), nil
+	} else {
+		return -1, errors.New("unsupported format type")
+	}
+}
+
 // GetNodeBTree returns the Node B-Tree (NBT).
 //
 // References "2.3. The 32-bit header data", "2.4. The 64-bit header data" and "5. The index b-tree":
@@ -476,6 +489,8 @@ func (pff *PFF) ProcessNameToIDMap(formatType string) error {
 
 	nameToIDMapNodeDataIdentifier, err := nameToIDMapNode.GetDataIdentifier(formatType)
 
+	log.Debugf("Data identifier: %d", nameToIDMapNodeDataIdentifier)
+
 	if err != nil {
 		return err
 	}
@@ -486,14 +501,25 @@ func (pff *PFF) ProcessNameToIDMap(formatType string) error {
 		return err
 	}
 
-	n, err := nameToIDMapNodeDataNode.GetFileOffset(formatType)
+	nameToIDMapNodeDataNodeFileOffset, err := nameToIDMapNodeDataNode.GetFileOffset(formatType)
 
-	log.Debugf("Found data node: %d", nameToIDMapNodeDataNode.Identifier)
-	log.Debugf("Data: %d", n)
+	if err != nil {
+		return err
+	}
 
-	x, err := pff.Read(2, n)
+	nameToIDMapNodeDataNodeSize, err := nameToIDMapNodeDataNode.GetSize(formatType)
 
-	log.Debugf("It's: %d", x)
+	if err != nil {
+		return err
+	}
+
+	table := NewTable(nameToIDMapNodeDataNodeFileOffset)
+
+	x, err := pff.Read(nameToIDMapNodeDataNodeSize, nameToIDMapNodeDataNodeFileOffset)
+
+	_ = table.Decrypt(x)
+
+	// The name-to-id map is a BC table.
 
 	return nil
 }

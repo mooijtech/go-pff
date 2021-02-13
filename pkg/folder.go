@@ -72,8 +72,6 @@ func (pff *PFF) GetSubFolders(formatType string, folder Folder) error {
 
 	n, err := pff.Read(1, subFoldersDataNodeFileOffset + 2)
 
-	// TODO - I can't find where the table starts, doesn't seem to be at subFoldersDataNodeFileOffset.
-
 	log.Debugf("It's: %d", binary.LittleEndian.Uint16([]byte{n[0], 0}))
 
 	return nil
